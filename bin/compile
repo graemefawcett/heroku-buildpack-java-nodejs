@@ -151,21 +151,10 @@ if [ -d $GLOBAL_CACHE_DIR ]; then
   rm -rf $BUILD_DIR/.npm
   ln -s $GLOBAL_CACHE_DIR/.npm $BUILD_DIR/.npm
 
-  echo "-----> Symlinking global bower cache"
-  mkdir -p $GLOBAL_CACHE_DIR/.cache/bower
-  mkdir -p $HOME/.cache
-  rm -rf $HOME/.cache/bower
-  ln -s $GLOBAL_CACHE_DIR/.cache/bower $HOME/.cache/bower
 else
   if test -d $CACHE_DIR/.npm; then
     echo "-----> Restoring npm cache directory from cache"
     cp -r $CACHE_DIR/.npm $BUILD_DIR/.npm
-  fi
-
-  if test -d $CACHE_DIR/.cache/bower; then
-    echo "-----> Restoring bower cache directory from cache"
-    mkdir -p $HOME/.cache
-    cp -r $CACHE_DIR/.cache/bower $HOME/.cache/bower
   fi
 fi
 
@@ -227,24 +216,7 @@ if [ "${PIPESTATUS[*]}" != "0 0" ]; then
   error "Failed to build app with Maven"
 fi
 
-# download webapp-runner
-if [ -d $GLOBAL_CACHE_DIR/webapp-runner ]; then
-    cd $GLOBAL_CACHE_DIR/webapp-runner
-    git pull --ff-only 2>&1 >/dev/null
-    cd $BUILD_DIR
-    cp -r $GLOBAL_CACHE_DIR/webapp-runner .
-else
-    git clone https://github.com/Vincit/webapp-runner.git 2>&1 | sed -u 's/^/        /'
-
-    if [ -d $GLOBAL_CACHE_DIR ]; then
-        cp -r webapp-runner $GLOBAL_CACHE_DIR
-    fi
-fi
-
-cd webapp-runner
-
 BUILDCMD="$CACHE_DIR/.maven/bin/mvn -B"
-BUILDCMD="$BUILDCMD -Duser.home=$BUILD_DIR/webapp-runner"
 BUILDCMD="$BUILDCMD -Dmaven.repo.local=$CACHE_DIR/.m2/repository"
 BUILDCMD="$BUILDCMD -q"
 BUILDCMD="$BUILDCMD $MAVEN_SETTINGS_OPT"
@@ -255,11 +227,6 @@ BUILDCMD="$BUILDCMD package"
 status "executing $BUILDCMD"
 
 $BUILDCMD 2>&1 | sed -u 's/^/       /'
-
-mkdir -p ../target/dependency
-cp target/webapp-runner.jar ../target/dependency/webapp-runner.jar
-cd ..
-rm -rf webapp-runner
 
 # finalize cache
 if [ "false" == $KEEP_M2_CACHE ]; then
@@ -277,14 +244,10 @@ done
 if [ ! -d $GLOBAL_CACHE_DIR ]; then
   echo "-----> Caching npm cache directory for future builds"
   mkdir -p $CACHE_DIR/.npm && rsync -a --delete $BUILD_DIR/.npm/ $CACHE_DIR/.npm/
-
-  echo "-----> Caching bower cache directory for future builds"
-  mkdir -p $CACHE_DIR/.cache/bower && rsync -a --delete $HOME/.cache/bower/ $CACHE_DIR/.cache/bower/
 fi
 
 echo "-----> Cleaning up cache directories"
 rm -rf "$BUILD_DIR/.node-gyp"
 rm -rf "$BUILD_DIR/.npm"
-rm -rf "$HOME/.cache/bower"
 
 logger -p user.notice -t "slugc[$$]" "language_pack_java java_compile_end $LOGGER_FLAGS"
